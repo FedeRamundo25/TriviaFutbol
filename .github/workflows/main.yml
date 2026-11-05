@@ -7,7 +7,10 @@ on:
 jobs:
   test:
     name: Ejecutar Tests de Calidad
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     
     # VOLVEMOS A LEVANTAR LA DB PARA EL TEST DE INTEGRACIÓN
     services:
@@ -27,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
 
@@ -42,20 +45,20 @@ jobs:
         run: npm run migrate
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql://user_test:password_test@localhost:5432/trivia_test
+          DATABASE_URL: postgresql://user_test:password_test@postgres:5432/trivia_test
 
       - name: Cargar datos de prueba
         run: npm run seed
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql://user_test:password_test@localhost:5432/trivia_test
+          DATABASE_URL: postgresql://user_test:password_test@postgres:5432/trivia_test
           JWT_SECRET: test_secret_key_123
           COOKIE_SECRET: una_cookie_secreta_para_test_ci
           NODE_ENV: test
 
       - name: Correr Tests con Cobertura
         env:
-          DATABASE_URL: postgresql://user_test:password_test@localhost:5432/trivia_test
+          DATABASE_URL: postgresql://user_test:password_test@postgres:5432/trivia_test
           JWT_SECRET: test_secret_key_123
           COOKIE_SECRET: una_cookie_secreta_para_test_ci
           NODE_ENV: test
@@ -63,27 +66,23 @@ jobs:
         working-directory: ./backend
 
       - name: Subir Reporte de Cobertura
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-reports
           path: backend/coverage/
-
-      - name: Instalar navegador para pruebas E2E
-        run: npx playwright install --with-deps chromium
-        working-directory: ./backend
 
       - name: Ejecutar prueba E2E en navegador
         run: npm run test:e2e
         working-directory: ./backend
         env:
-          DATABASE_URL: postgresql://user_test:password_test@localhost:5432/trivia_test
+          DATABASE_URL: postgresql://user_test:password_test@postgres:5432/trivia_test
           JWT_SECRET: test_secret_key_123
           COOKIE_SECRET: una_cookie_secreta_para_test_ci
           NODE_ENV: test
 
       - name: Guardar trazas E2E si hay errores
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-traces
           path: backend/test-results/
@@ -91,7 +90,7 @@ jobs:
 
   deploy:
     name: Desplegar a Render
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     steps:
       - name: Ejecutar Deploy en Render
