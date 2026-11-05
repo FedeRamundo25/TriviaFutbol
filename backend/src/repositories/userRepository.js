@@ -17,6 +17,14 @@ const userRepository = {
     return result.rows[0] || null;
   },
 
+  async findPasswordById(id) {
+    const result = await pool.query(
+      'SELECT id, password_hash FROM users WHERE id = $1',
+      [id]
+    );
+    return result.rows[0] || null;
+  },
+
   async create(username, passwordHash) {
     const result = await pool.query(
       `INSERT INTO users (username, password_hash)

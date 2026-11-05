@@ -27,6 +27,7 @@
         <input type="password" id="loginPassword" placeholder="Tu contraseña" autocomplete="current-password">
       </div>
       <div class="error-msg" id="loginError"></div>
+      <div class="success-msg" id="loginSuccess" role="status"></div>
       <br>
       <button class="btn btn-verde" onclick="login()">⚽ Entrar</button>
     </div>
@@ -46,6 +47,8 @@
       <button class="btn btn-azul" onclick="register()">🎮 Crear cuenta</button>
     </div>
 
+    <div class="success-msg" id="registerSuccess" role="status"></div>
+
     <br>
     <a class="btn btn-ghost" href="index.html">← Volver</a>
   </div>
@@ -54,7 +57,11 @@
   <script>
     // Verificar si ya está logueado
     api.getMe().then(user => {
-      if (user) window.location.href = 'index.html';
+      if (user?.force_password_reset) {
+        window.location.href = 'change-password.html?reset=1';
+      } else if (user) {
+        window.location.href = 'index.html';
+      }
     });
 
     // Si viene de force_password_reset
@@ -62,6 +69,10 @@
     if (params.get('reset') === '1') {
       document.getElementById('loginError').textContent = 'Tu contraseña fue reseteada. Ingresá con la contraseña temporal.';
       document.getElementById('loginError').classList.add('visible');
+    }
+    if (params.get('passwordChanged') === '1') {
+      document.getElementById('loginSuccess').textContent = 'Contraseña actualizada. Iniciá sesión con la nueva contraseña.';
+      document.getElementById('loginSuccess').classList.add('visible');
     }
 
     function switchTab(tab) {
@@ -87,6 +98,8 @@
       if (result.error) {
         errorEl.textContent = result.error;
         errorEl.classList.add('visible');
+      } else if (result.user?.force_password_reset) {
+        window.location.href = 'change-password.html?reset=1';
       } else {
         window.location.href = 'index.html';
       }
@@ -97,6 +110,7 @@
       const password = document.getElementById('regPassword').value;
       const errorEl = document.getElementById('registerError');
       errorEl.classList.remove('visible');
+      document.getElementById('registerSuccess').classList.remove('visible');
 
       if (!username || !password) {
         errorEl.textContent = 'Completá todos los campos';
@@ -106,10 +120,19 @@
 
       const result = await api.register(username, password);
       if (result.error) {
+        if (result.accountCreated) {
+          document.getElementById('regPassword').value = '';
+          document.getElementById('loginUsername').value = username;
+          document.getElementById('registerSuccess').textContent =
+            'La cuenta se creó, pero no pudimos iniciar sesión automáticamente. Ingresá con tu contraseña.';
+          document.getElementById('registerSuccess').classList.add('visible');
+          switchTab('login');
+          return;
+        }
         errorEl.textContent = result.error;
         errorEl.classList.add('visible');
       } else {
-        window.location.href = 'index.html';
+        window.location.href = 'index.html?registered=1';
       }
     }
 

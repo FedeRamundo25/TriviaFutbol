@@ -52,9 +52,12 @@ const authService = {
   },
 
   async changePassword(userId, currentPassword, newPassword) {
-    const user = await userRepository.findByUsername(
-      (await userRepository.findById(userId)).username
-    );
+    const user = await userRepository.findPasswordById(userId);
+    if (!user) {
+      const error = new Error('Usuario no encontrado');
+      error.status = 404;
+      throw error;
+    }
 
     const valid = await bcrypt.compare(currentPassword, user.password_hash);
     if (!valid) {

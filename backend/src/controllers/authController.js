@@ -19,8 +19,9 @@ const authController = {
 
   // Agregamos estas para que las rutas no rompan:
   logout: asyncHandler(async (req, res) => {
-    // Lógica de logout (usualmente limpiar cookie o token en cliente)
-    res.json({ message: 'Logged out successfully' });
+    res.json({
+      message: 'El cierre de sesión se realiza en el cliente eliminando el JWT; el servidor no revoca tokens emitidos.'
+    });
   }),
 
   me: asyncHandler(async (req, res) => {
@@ -29,7 +30,8 @@ const authController = {
   }),
 
   changePassword: asyncHandler(async (req, res) => {
-    // Aquí llamarías a tu servicio de cambio de password
+    const { currentPassword, newPassword } = req.body;
+    await authService.changePassword(req.user.id, currentPassword, newPassword);
     res.json({ message: 'Password changed successfully' });
   })
 };

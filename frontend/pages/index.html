@@ -45,6 +45,9 @@
   <div class="card">
     <div class="logo">Trivia<span>Fútbol</span> ⚽</div>
     <p class="subtitle">¿Cuánto sabés de fútbol?</p>
+    <div class="success-msg" id="registrationSuccess" role="status" style="display:none">
+      Cuenta creada correctamente. ¡Bienvenido!
+    </div>
 
     <div class="btn-stack" id="mainButtons">
       <a class="btn btn-verde" href="select-mode.html">
@@ -56,6 +59,9 @@
       <div class="divider" id="dividerAuth">─────────────────</div>
       <a class="btn btn-ghost" href="login.html" id="btnLogin">
         Iniciar sesión
+      </a>
+      <a class="btn btn-ghost" href="change-password.html" id="btnChangePassword" style="display:none">
+        🔐 Cambiar contraseña
       </a>
       <a class="btn btn-ghost" id="btnAdmin" href="admin.html" style="display:none">
         ⚙️ Panel admin
@@ -69,18 +75,23 @@
   <script src="js/api.js"></script>
   <script>
     async function init() {
+      if (new URLSearchParams(window.location.search).get('registered') === '1') {
+        document.getElementById('registrationSuccess').style.display = 'block';
+      }
+
       const user = await api.getMe();
       if (user) {
         document.getElementById('userBar').style.display = 'flex';
         document.getElementById('usernameLabel').textContent = '👤 ' + user.username;
         document.getElementById('btnLogin').style.display = 'none';
+        document.getElementById('btnChangePassword').style.display = 'flex';
         document.getElementById('btnLogout').style.display = 'flex';
         if (user.is_admin) {
           document.getElementById('adminBadge').style.display = 'inline';
           document.getElementById('btnAdmin').style.display = 'flex';
         }
         if (user.force_password_reset) {
-          window.location.href = 'login.html?reset=1';
+          window.location.href = 'change-password.html?reset=1';
         }
       }
     }

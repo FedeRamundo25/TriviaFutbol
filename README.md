@@ -49,7 +49,9 @@ El ranking se calcula en el momento desde `game_sessions` y muestra las 25 mejor
 
 Usuario y contraseña, sin mail. El usuario admite solo letras y números (3 a 30 caracteres) y la contraseña tiene entre 6 y 100. No hay recupero automático: el admin resetea la contraseña desde el panel y entrega una temporal.
 
-El login devuelve un JWT (vence a los 7 días) y el frontend lo guarda en `localStorage` y lo manda en el header `Authorization: Bearer`. El backend también acepta el token por cookie, pero hoy no lo emite. Al registrarse, el frontend hace el login automático y redirige al inicio sin mostrar ningún mensaje de confirmación.
+El login devuelve un JWT (vence a los 7 días) y el frontend lo guarda en `localStorage` y lo manda en el header `Authorization: Bearer`. El backend también acepta el token por cookie, pero hoy no lo emite. Al cerrar sesión, el frontend elimina el JWT de `localStorage`; el servidor no revoca tokens emitidos y cada token sigue siendo válido hasta su vencimiento. Al registrarse, la app inicia sesión automáticamente y muestra una confirmación; si ese login falla, informa que la cuenta ya fue creada y permite iniciar sesión manualmente.
+
+El cambio de contraseña requiere la contraseña actual, guarda un nuevo hash con bcrypt y elimina la marca de cambio obligatorio. La pantalla `change-password.html` permite hacerlo tanto desde la cuenta como después de un reseteo administrativo. Los JWT emitidos antes del cambio siguen válidos hasta que venzan.
 
 ## Stack
 
@@ -58,7 +60,7 @@ El login devuelve un JWT (vence a los 7 días) y el frontend lo guarda en `local
 - Base de datos: PostgreSQL 15, migraciones con node-pg-migrate.
 - Pruebas: Jest para unidades, Supertest para integración HTTP con PostgreSQL y Playwright/Chromium para el recorrido E2E del navegador.
 - Calidad y seguridad: Joi valida entradas; bcrypt almacena hashes de contraseñas; Helmet y límites por ruta agregan protecciones del lado servidor.
-- Cobertura: el reporte local más reciente registró 81,77 % de líneas (aprox. 82 %); el umbral mínimo configurado para líneas es 50 %.
+- Cobertura: el último reporte medido antes de estos cambios registró 81,77 % de líneas (aprox. 82 %); no hay un reporte actualizado para el estado actual. El umbral mínimo configurado para líneas es 50 %.
 
 ## Base de datos
 
@@ -112,25 +114,24 @@ TriviaFutbol/
       db/
         client.js
         migrations/         9 migraciones
-        seeds/              run.js (seed principal) y scripts de logos y jugadores
+        seeds/              run.js, import-players.js, update-logos.js, Check-logos.js
       middlewares/          auth, errorHandler, rateLimiter, validate
       repositories/         user, game, question, ranking
       routes/               auth, game, ranking, admin
       services/             auth, game, question, ranking
       utils/                logger.js, asyncHandler.js
       index.js              arranque de Express, CORS y rutas
-    tests/                  5 suites unitarias y 1 suite de integración Jest/Supertest
+    tests/                  6 suites Jest, incluida la integración HTTP con Supertest
     e2e/                    recorrido de navegador con Playwright
     playwright.config.js    arranca API local y frontend estático para E2E
     .env.example
   frontend/
-    index.html              redirige a pages/index.html, pero Render no lo publica (se puede borrar)
     pages/                  esta carpeta es la que publica Render
       index.html            página de inicio
       css/                  main.css, game.css
       js/                   api.js (cliente de la API), auth, game, leaderboard, results,
                             select-mode, admin
-      login.html, select-mode.html, game.html, results.html,
+      login.html, change-password.html, select-mode.html, game.html, results.html,
       leaderboard.html, admin.html
   docker-compose.yml        PostgreSQL local
 ```
@@ -209,10 +210,7 @@ npm run test:e2e          # navegador real, API y base de datos locales
 
 ## Pendientes y cosas raras conocidas
 
-- `PUT /api/auth/change-password` valida los datos pero el controlador no cambia la contraseña: responde "Password changed successfully" sin hacer nada.
-- `POST /api/auth/logout` tampoco invalida el token. El cierre de sesión es borrarlo del `localStorage`.
-- Registro: mostrar un mensaje de "cuenta creada" y avisar si falla el login automático.
-- Sobran archivos: `frontend/index.html` (el redirect), `select-difficulty.html` (la dificultad se eliminó), `frontend/pages/game.js` (se usa `js/game.js`), `errorMiddleware.js` (no se importa en ningún lado) y los scripts `fix-logos` 1 a 4.
-- `backend/logs/` está en `.gitignore` pero los dos archivos de log (unos 100 KB) quedaron subidos de antes. Se sacan del repo con `git rm --cached -r backend/logs`.
-- Ampliar jugadores con los planteles completos, fotos de jugadores para el modo Jugadores y dominio propio.
-- El 19/10/2026 se restauró `frontend/pages/index.html`, que había quedado borrado en el commit "Mejoras en Diseño".
+- El cierre de sesión es solo local. Si se necesita revocar un JWT antes de sus 7 días de vencimiento, habrá que agregar revocación del lado servidor.
+- Los logs ya no se incluyen en la versión actual del repositorio y siguen ignorados localmente. Sus copias anteriores continúan en el historial Git; purgarlas requiere reescribir el historial y publicar ese cambio.
+- Completar los planteles y agregar fotos de jugadores al modo Jugadores.
+- Evaluar un dominio propio.

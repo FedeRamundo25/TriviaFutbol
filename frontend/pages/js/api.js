@@ -27,7 +27,7 @@ const api = {
     const res = await this.request('POST', '/auth/register', { username, password });
     if (res.user) {
       const loginRes = await this.login(username, password);
-      return loginRes;
+      return { ...loginRes, accountCreated: true };
     }
     return res;
   },
