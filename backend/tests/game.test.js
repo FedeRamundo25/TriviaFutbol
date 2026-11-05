@@ -4,7 +4,7 @@ const app = require('../src/index');
 describe('Game Flow Integration Tests', () => {
   let authToken;
   const testUser = {
-    username: 'game_test_user_' + Date.now(),
+    username: 'gameTestUser' + Date.now(),
     password: 'password123'
   };
 
