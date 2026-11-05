@@ -9,15 +9,18 @@ describe('Game Flow Integration Tests', () => {
   };
 
   beforeAll(async () => {
-    await request(app)
+    const registerResponse = await request(app)
       .post('/api/auth/register')
       .send(testUser);
+    expect(registerResponse.statusCode).toBe(201);
 
-    const res = await request(app)
+    const loginResponse = await request(app)
       .post('/api/auth/login')
       .send(testUser);
 
-    authToken = res.body.token;
+    expect(loginResponse.statusCode).toBe(200);
+    expect(loginResponse.body.token).toEqual(expect.any(String));
+    authToken = loginResponse.body.token;
   });
 
   test('Should require authentication to start game', async () => {
@@ -29,23 +32,18 @@ describe('Game Flow Integration Tests', () => {
   });
 
   test('Should start a new game session when authenticated', async () => {
-    if (!authToken) return;
-
     const res = await request(app)
       .post('/api/game/start')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ mode: 'teams' });
 
-    expect([200, 201]).toContain(res.statusCode);
-    if (res.statusCode === 201) {
-      expect(res.body).toHaveProperty('sessionId');
-      expect(Array.isArray(res.body.questions)).toBe(true);
-    }
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toHaveProperty('sessionId');
+    expect(Array.isArray(res.body.questions)).toBe(true);
+    expect(res.body.questions.length).toBeGreaterThan(0);
   });
 
   test('Should reject invalid mode', async () => {
-    if (!authToken) return;
-
     const res = await request(app)
       .post('/api/game/start')
       .set('Authorization', `Bearer ${authToken}`)
@@ -55,8 +53,6 @@ describe('Game Flow Integration Tests', () => {
   });
 
   test('Should reject answer for non-existent session', async () => {
-    if (!authToken) return;
-
     const res = await request(app)
       .post('/api/game/99999/answer')
       .set('Authorization', `Bearer ${authToken}`)

@@ -35,18 +35,23 @@ jobs:
           node-version: 20
 
       - name: Instalar dependencias
-        run: npm install
+        run: npm ci
         working-directory: ./backend
 
-      - name: Inicializar Tablas (EL PASO QUE FALTABA)
-        run: |
-          psql $DATABASE_URL -c "DROP TABLE IF EXISTS sessions, questions, users CASCADE;"
-          psql $DATABASE_URL -c "CREATE TABLE users (id SERIAL PRIMARY KEY, username TEXT UNIQUE, password TEXT);"
-          psql $DATABASE_URL -c "CREATE TABLE sessions (id SERIAL PRIMARY KEY, user_id INTEGER, mode TEXT, score INTEGER DEFAULT 0, completed BOOLEAN DEFAULT FALSE);"
-          psql $DATABASE_URL -c "CREATE TABLE questions (id SERIAL PRIMARY KEY, type TEXT, data JSONB);"
-          psql $DATABASE_URL -c "INSERT INTO questions (type, data) VALUES ('teams', '{\"id\": \"team_A\", \"options\": [{\"id\": 1, \"text\": \"A\", \"correct\": true}, {\"id\": 2, \"text\": \"B\", \"correct\": false}]}'::jsonb);"
+      - name: Aplicar migraciones de base de datos
+        run: npm run migrate
+        working-directory: ./backend
         env:
           DATABASE_URL: postgresql://user_test:password_test@localhost:5432/trivia_test
+
+      - name: Cargar datos de prueba
+        run: npm run seed
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://user_test:password_test@localhost:5432/trivia_test
+          JWT_SECRET: test_secret_key_123
+          COOKIE_SECRET: una_cookie_secreta_para_test_ci
+          NODE_ENV: test
 
       - name: Correr Tests con Cobertura
         env:
