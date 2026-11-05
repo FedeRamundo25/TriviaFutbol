@@ -17,7 +17,7 @@ app.use(helmet());
 app.disable('x-powered-by');
 
 app.use(cors({
-  origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'https://triviafutbol-1.onrender.com'],
+  origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'http://127.0.0.1:4173', 'http://localhost:4173', 'https://triviafutbol-1.onrender.com'],
   credentials: true,
 }));
 

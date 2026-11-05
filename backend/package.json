@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "description": "Backend de TriviaFutbol",
   "main": "src/index.js",
-"scripts": {
+  "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "test": "jest --verbose --runInBand --forceExit",
     "test:coverage": "jest --coverage --runInBand --forceExit",
-    "test:unit": "jest src/tests/unit",
-    "test:int": "jest src/tests/integration",
+    "test:e2e": "playwright test",
+    "test:unit": "jest --verbose --runInBand --forceExit --testPathIgnorePatterns=tests/game.test.js",
+    "test:int": "jest --verbose --runInBand --forceExit --runTestsByPath tests/game.test.js",
     "migrate": "node-pg-migrate up --migrations-dir src/db/migrations",
     "migrate:down": "node-pg-migrate down --migrations-dir src/db/migrations",
     "migrate:create": "node-pg-migrate create --migrations-dir src/db/migrations",
@@ -18,6 +19,9 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
     "coverageThreshold": {
       "global": {
         "lines": 50
@@ -48,6 +52,7 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "jest": "^30.3.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"

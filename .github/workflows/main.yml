@@ -68,6 +68,27 @@ jobs:
           name: test-reports
           path: backend/coverage/
 
+      - name: Instalar navegador para pruebas E2E
+        run: npx playwright install --with-deps chromium
+        working-directory: ./backend
+
+      - name: Ejecutar prueba E2E en navegador
+        run: npm run test:e2e
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://user_test:password_test@localhost:5432/trivia_test
+          JWT_SECRET: test_secret_key_123
+          COOKIE_SECRET: una_cookie_secreta_para_test_ci
+          NODE_ENV: test
+
+      - name: Guardar trazas E2E si hay errores
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: backend/test-results/
+          if-no-files-found: ignore
+
   deploy:
     name: Desplegar a Render
     runs-on: ubuntu-latest

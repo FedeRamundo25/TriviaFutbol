@@ -3,5 +3,6 @@ node_modules/
 logs/
 coverage/
 playwright-report/
+test-results/
 .DS_Store
 cookies.txt

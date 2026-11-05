@@ -2,15 +2,18 @@
 
 Trivia de fútbol pensada para chicos de 9 años. Tiene tres modos de juego, ranking de partidas y cuentas de usuario. Está armada con servicios gratuitos y se desarrolló siguiendo guías paso a paso, sin conocimientos técnicos previos.
 
-Última revisión de este documento: 19/10/2026, contrastado con el contenido del repo.
+Última revisión de este documento: 05/11/2026, contrastado con el código, los workflows y la página de presentación.
+
+Página de presentación del proyecto: https://federamundo25.github.io/TriviaFutbol/ · Aplicación jugable: https://triviafutbol-1.onrender.com/ · Repositorio: https://github.com/FedeRamundo25/TriviaFutbol.
 
 ## Cómo está armado
 
-El código vive en GitHub (`FedeR25/TriviaFutbol`). Render lo despliega en dos servicios, el backend y el frontend, y el backend guarda todo en una base PostgreSQL de Neon. Un job de cron-job.org le pega al backend cada 14 minutos para que Render no lo duerma.
+El código vive en GitHub (`FedeRamundo25/TriviaFutbol`). Render despliega el backend y el frontend como servicios separados; el backend guarda usuarios y partidas en PostgreSQL de Neon. La página de GitHub Pages es una presentación independiente que enlaza a la aplicación y a este repositorio.
 
 | Pieza | Servicio | Dirección |
 |---|---|---|
-| Código | GitHub | github.com/FedeR25/TriviaFutbol (rama `main`) |
+| Código | GitHub | github.com/FedeRamundo25/TriviaFutbol (rama `main`) |
+| Página de presentación | GitHub Pages | https://federamundo25.github.io/TriviaFutbol/ |
 | Backend (API) | Render, Web Service `TriviaFutbol` | https://triviafutbol.onrender.com |
 | Frontend | Render, Static Site `TriviaFutbol-1` (publica la carpeta `frontend/pages`) | https://triviafutbol-1.onrender.com |
 | Base de datos | Neon (PostgreSQL) | host `ep-empty-breeze-am6nmp5z` |
@@ -21,14 +24,12 @@ Dos cosas del plan gratuito que explican las demoras. Render duerme el backend t
 
 ### Despliegue
 
-Render tiene Auto-Deploy en "On Commit" para el frontend: cada push a `main` lo actualiza solo. En el backend falta confirmarlo (Settings, Build & Deploy).
+Hay dos workflows de GitHub Actions:
 
-Además hay dos workflows de GitHub Actions que corren en cada push a `main`:
+- `main.yml`, en cada push a `main`: inicia PostgreSQL 15, instala dependencias con `npm ci`, aplica migraciones y seed, ejecuta la suite Jest con cobertura y una prueba E2E de Playwright en Chromium. Si todo pasa, llama al deploy hook de Render (`RENDER_DEPLOY_HOOK`). El reporte de cobertura queda como artefacto de la ejecución.
+- `pages.yml`, cuando cambian `docs/**` o el propio workflow, publica `docs/` en GitHub Pages; también puede iniciarse manualmente.
 
-- `main.yml`: levanta un Postgres de prueba, corre los tests y, si pasan, llama al deploy hook de Render (secret `RENDER_DEPLOY_HOOK`).
-- `ci.yml`: corre los tests con cobertura usando los secrets del repo (`DATABASE_URL`, `JWT_SECRET`, `COOKIE_SECRET`). También corre en la rama `dev` y en pull requests.
-
-En el run del 19/10/2026 (commit `1ee3a6f`) `main.yml` salió en verde y `ci.yml` falló. Como `main.yml` ya corre los tests, `ci.yml` es un duplicado y se puede borrar. Si Render tiene Auto-Deploy activo en el backend, el deploy hook de `main.yml` también es redundante y provoca un segundo deploy por cada push.
+La página de presentación no es la aplicación: se publica desde `docs/` y enlaza al frontend jugable de Render y al repositorio.
 
 ### Mantenimiento del ping
 
@@ -55,7 +56,9 @@ El login devuelve un JWT (vence a los 7 días) y el frontend lo guarda en `local
 - Frontend: HTML, CSS y JavaScript sin frameworks. Tipografías Fredoka One y Nunito.
 - Backend: Node.js 20 con Express 5, Joi para validar, bcrypt (12 rondas), jsonwebtoken, helmet, express-rate-limit, winston para logs.
 - Base de datos: PostgreSQL 15, migraciones con node-pg-migrate.
-- Tests: Jest y Supertest.
+- Pruebas: Jest para unidades, Supertest para integración HTTP con PostgreSQL y Playwright/Chromium para el recorrido E2E del navegador.
+- Calidad y seguridad: Joi valida entradas; bcrypt almacena hashes de contraseñas; Helmet y límites por ruta agregan protecciones del lado servidor.
+- Cobertura: el reporte local más reciente registró 81,77 % de líneas (aprox. 82 %); el umbral mínimo configurado para líneas es 50 %.
 
 ## Base de datos
 
@@ -100,7 +103,8 @@ Límites de uso: 10 requests cada 15 minutos en auth (el registro y el login com
 
 ```
 TriviaFutbol/
-  .github/workflows/        ci.yml, main.yml
+  .github/workflows/        main.yml (tests y Render), pages.yml (GitHub Pages)
+  docs/                     página de presentación publicada en GitHub Pages
   backend/
     src/
       config/env.js         lee y exige las variables de entorno
@@ -115,7 +119,9 @@ TriviaFutbol/
       services/             auth, game, question, ranking
       utils/                logger.js, asyncHandler.js
       index.js              arranque de Express, CORS y rutas
-    tests/                  6 archivos de test de Jest
+    tests/                  5 suites unitarias y 1 suite de integración Jest/Supertest
+    e2e/                    recorrido de navegador con Playwright
+    playwright.config.js    arranca API local y frontend estático para E2E
     .env.example
   frontend/
     index.html              redirige a pages/index.html, pero Render no lo publica (se puede borrar)
@@ -156,7 +162,7 @@ COOKIE_SECRET=...
 
 Para el frontend, abrir `frontend/pages/login.html` con Live Server (puerto 5500). Ojo: `frontend/pages/js/api.js` tiene la URL de producción escrita a mano. Para probar contra el backend local hay que cambiarla a `http://localhost:3000/api` y volver a dejarla como estaba antes de hacer commit. El archivo `js/config.js` tiene la URL local pero ninguna página lo usa.
 
-El backend solo acepta pedidos desde `localhost:5500`, `127.0.0.1:5500` y `triviafutbol-1.onrender.com`. Si cambia la dirección del frontend (por ejemplo con un dominio propio), hay que editar la lista de `cors` en `backend/src/index.js`.
+El backend solo acepta pedidos desde los orígenes configurados en `backend/src/index.js`: `localhost:5500`, `127.0.0.1:5500`, `localhost:4173`, `127.0.0.1:4173` y `triviafutbol-1.onrender.com`. El puerto 4173 lo usa el servidor estático de Playwright. Si cambia la dirección del frontend, hay que actualizar la lista de CORS.
 
 ## Operaciones sobre producción
 
@@ -186,7 +192,20 @@ Las variables de producción (`DATABASE_URL`, `JWT_SECRET`, `COOKIE_SECRET`, `JW
 
 ## Estado de las pruebas
 
-Hay pruebas de Jest sobre los servicios y controladores de auth y game, y sobre questionService, más un test con Supertest en `game.test.js`. El umbral mínimo de cobertura configurado es 50 %. No hay pruebas de integración completas con base de datos ni E2E: `ci.yml` instala Playwright pero no hay tests que lo usen. Los scripts `test:unit` y `test:int` de `package.json` apuntan a carpetas que no existen, así que solo sirven `npm test` y `npm run test:coverage`.
+La suite actual tiene 28 casos Jest en seis archivos (23 unitarios en cinco suites y 5 de integración con Supertest/PostgreSQL) más un recorrido E2E con Playwright/Chromium. El E2E crea una cuenta, inicia una partida del modo Equipos, responde las diez preguntas y verifica que se muestre la pantalla de resultados. La prueba corre contra una base de datos preparada con migraciones y seed; no usa la base de producción.
+
+Comandos desde `backend/`:
+
+```bash
+npm test                 # toda la suite Jest (requiere PostgreSQL para la integración)
+npm run test:unit         # solo las cinco suites unitarias
+npm run test:int          # solo la integración con PostgreSQL
+npm run test:coverage     # suite Jest y reporte de cobertura
+npx playwright install chromium
+npm run test:e2e          # navegador real, API y base de datos locales
+```
+
+`test:unit` y `test:int` apuntan ahora a las ubicaciones reales de los tests. Playwright se ejecuta por separado con `test:e2e`; Jest está configurado para descubrir solo `backend/tests/**/*.test.js` y no tratar los archivos de navegador como tests Jest.
 
 ## Pendientes y cosas raras conocidas
 
@@ -195,7 +214,5 @@ Hay pruebas de Jest sobre los servicios y controladores de auth y game, y sobre 
 - Registro: mostrar un mensaje de "cuenta creada" y avisar si falla el login automático.
 - Sobran archivos: `frontend/index.html` (el redirect), `select-difficulty.html` (la dificultad se eliminó), `frontend/pages/game.js` (se usa `js/game.js`), `errorMiddleware.js` (no se importa en ningún lado) y los scripts `fix-logos` 1 a 4.
 - `backend/logs/` está en `.gitignore` pero los dos archivos de log (unos 100 KB) quedaron subidos de antes. Se sacan del repo con `git rm --cached -r backend/logs`.
-- Borrar `ci.yml` (falla y duplica a `main.yml`).
 - Ampliar jugadores con los planteles completos, fotos de jugadores para el modo Jugadores y dominio propio.
 - El 19/10/2026 se restauró `frontend/pages/index.html`, que había quedado borrado en el commit "Mejoras en Diseño".
-- Se sacaron del README anterior algunas cosas que ya no eran ciertas: la lista de archivos `ci.yml` y `deploy.yml`, las cookies httpOnly como mecanismo principal y los tests como "pendientes".

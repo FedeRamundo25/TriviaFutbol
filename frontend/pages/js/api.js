@@ -2,7 +2,7 @@
 // const API_URL = 'https://triviafutbol.onrender.com/api';
 
 // Por esto:
-const API_URL = 'https://triviafutbol.onrender.com/api';
+const API_URL = window.__API_URL__ || 'https://triviafutbol.onrender.com/api';
 
 const api = {
   async request(method, path, body = null) {
