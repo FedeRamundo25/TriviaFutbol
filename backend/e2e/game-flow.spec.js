@@ -16,7 +16,7 @@ test('a player can register, play a teams round, and reach the results screen', 
   await page.locator('#regUsername').fill(username);
   await page.locator('#regPassword').fill('password123');
   await page.getByRole('button', { name: /crear cuenta/i }).click();
-  await expect(page).toHaveURL(/index\.html$/);
+  await expect(page).toHaveURL(/index\.html\?registered=1$/);
 
   await page.getByRole('link', { name: /jugar/i }).click();
   await page.locator('.mode-card').first().click();
