@@ -31,9 +31,9 @@ Hay dos workflows de GitHub Actions:
 
 La página de presentación no es la aplicación: se publica desde `docs/` y enlaza al frontend jugable de Render y al repositorio.
 
-### Mantenimiento del ping
+### Ping de salud del backend
 
-El job de cron-job.org estaba desactivado desde el 31/05/2026 por un error HTTP y se reactivó el 19/10/2026. Si el job falla varias veces seguidas, cron-job.org lo desactiva solo. Conviene tener activadas las notificaciones por mail en la configuración del job.
+El job `TriviaFutbol Ping` de cron-job.org envía una solicitud `GET` a `/api/health` cada 14 minutos. La ruta informa el estado del servicio y el entorno de ejecución; el ping mantiene actividad periódica en el backend de Render.
 
 ## Modos de juego
 
