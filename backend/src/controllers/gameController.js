@@ -6,15 +6,28 @@ const gameController = {
   // Iniciar partida
   start: asyncHandler(async (req, res) => {
     const { mode } = req.body;
-    const session = await gameService.startSession(req.user.id, mode);
-
     const count = mode === 'timed' ? 50 : 10;
-    const questions = await questionService.generateQuestions(mode, count);
+    const questions = (await questionService.generateQuestions(mode, count)) || [];
+    const sessionQuestions = questions.map(question => {
+      const options = question.options || [];
+      return {
+        questionRefId: question.questionRefId,
+        questionType: question.questionType,
+        correctAnswerId: options.find(option => option.correct)?.id,
+        optionIds: options.map(option => option.id)
+      };
+    });
+    const session = await gameService.startSession(req.user.id, mode, sessionQuestions);
+
+    const publicQuestions = questions.map(question => ({
+      ...question,
+      options: (question.options || []).map(({ id, name }) => ({ id, name }))
+    }));
 
     res.status(201).json({
       sessionId: session.id,
       mode: session.mode,
-      questions
+      questions: publicQuestions
     });
   }),
 

@@ -5,8 +5,8 @@ const logger = require('../utils/logger');
 const MAX_RESPONSE_TIME_MS = 60000;
 
 const gameService = {
-  async startSession(userId, mode) {
-    const session = await gameRepository.createSession(userId, mode);
+  async startSession(userId, mode, questions) {
+    const session = await gameRepository.createSession(userId, mode, questions);
     logger.info({ message: 'game_started', userId, sessionId: session.id, mode });
     return session;
   },
@@ -35,28 +35,67 @@ const gameService = {
       throw error;
     }
 
-    const alreadyAnswered = await gameRepository.wasQuestionAnswered(sessionId, questionRefId);
-    if (alreadyAnswered) {
-      const error = new Error('Esta pregunta ya fue respondida');
+    if (session.mode && session.mode !== 'timed' && session.mode !== questionType) {
+      const error = new Error('El tipo de pregunta no corresponde al modo de juego');
       error.status = 400;
       throw error;
     }
 
+    const sessionQuestions = Array.isArray(session.questions) ? session.questions : null;
+    const storedQuestion = sessionQuestions?.find(question =>
+      question.questionRefId === questionRefId && question.questionType === questionType
+    );
+
+    if (sessionQuestions && !storedQuestion) {
+      const error = new Error('La pregunta no pertenece a esta partida');
+      error.status = 400;
+      throw error;
+    }
+
+    let correctAnswerId;
+    if (storedQuestion) {
+      if (!storedQuestion.optionIds?.includes(answerGiven)) {
+        const error = new Error('La respuesta no es una opción válida para esta pregunta');
+        error.status = 400;
+        throw error;
+      }
+
+      correctAnswerId = storedQuestion.correctAnswerId;
+      if (correctAnswerId === undefined) {
+        const error = new Error('No se pudo validar la respuesta');
+        error.status = 500;
+        throw error;
+      }
+    }
+
+    const alreadyAnswered = await gameRepository.wasQuestionAnswered(sessionId, questionRefId, questionType);
+    if (alreadyAnswered) {
+      const previousAnswer = await gameRepository.findAnswer(sessionId, questionRefId, questionType);
+      return {
+        isCorrect: previousAnswer?.is_correct || false,
+        penaltyMs: previousAnswer?.penalty_ms || 0,
+        correctAnswerId: correctAnswerId ?? questionRefId
+      };
+    }
+
     let isCorrect = false;
-    if (questionType === 'teams') {
-      isCorrect = answerGiven === questionRefId;
+    if (storedQuestion) {
+      isCorrect = answerGiven === correctAnswerId;
+    } else if (questionType === 'teams') {
+      correctAnswerId = questionRefId;
+      isCorrect = answerGiven === correctAnswerId;
     } else if (questionType === 'players') {
-      // Lógica limpia usando el nuevo método del repositorio
       const player = await gameRepository.getPlayerTeam(questionRefId);
       isCorrect = player && answerGiven === player.team_id;
+      correctAnswerId = player?.team_id;
     }
+
+    const penalty = isCorrect ? 0 : (5000 + (session.wrong_answers * 3000));
 
     await gameRepository.createAnswer(
       sessionId, questionRefId, questionType,
-      answerGiven, isCorrect, responseTimeMs
+      answerGiven, isCorrect, responseTimeMs, penalty
     );
-
-    const penalty = isCorrect ? 0 : (5000 + (session.wrong_answers * 3000));
 
     await gameRepository.updateSession(sessionId, {
       correct_answers: session.correct_answers + (isCorrect ? 1 : 0),
@@ -67,7 +106,7 @@ const gameService = {
 
     logger.info({ message: 'answer_submitted', sessionId, questionRefId, isCorrect, responseTimeMs });
 
-    return { isCorrect, penaltyMs: penalty, correctAnswerId: questionRefId };
+    return { isCorrect, penaltyMs: penalty, correctAnswerId };
   },
 
   async finishSession(sessionId, userId, rawTimeMs) {
@@ -89,20 +128,18 @@ const gameService = {
       throw error;
     }
 
-    const totalTimeMs = rawTimeMs + session.penalty_ms;
+    const createdAtMs = Date.parse(session.created_at);
+    const elapsedFromServer = Number.isFinite(createdAtMs) ? Date.now() - createdAtMs : 0;
+    const trustedRawTimeMs = Math.max(rawTimeMs, elapsedFromServer, 1);
+    const totalTimeMs = trustedRawTimeMs + session.penalty_ms;
 
     await gameRepository.updateSession(sessionId, {
-      raw_time_ms: rawTimeMs,
+      raw_time_ms: trustedRawTimeMs,
       total_time_ms: totalTimeMs,
       completed: true
     });
 
-    const rankingPosition = await rankingService.updateRanking(
-      userId, sessionId,
-      session.correct_answers,
-      totalTimeMs,
-      session.mode
-    );
+    const rankingPosition = await rankingService.getSessionPosition(sessionId, session.mode);
 
     logger.info({
       message: 'game_finished',
@@ -118,7 +155,7 @@ const gameService = {
       correctAnswers: session.correct_answers,
       wrongAnswers: session.wrong_answers,
       penaltyMs: session.penalty_ms,
-      rawTimeMs,
+      rawTimeMs: trustedRawTimeMs,
       totalTimeMs,
       rankingPosition
     };
@@ -138,7 +175,8 @@ const gameService = {
       throw error;
     }
 
-    return session;
+    const { questions, ...publicSession } = session;
+    return publicSession;
   }
 };
 

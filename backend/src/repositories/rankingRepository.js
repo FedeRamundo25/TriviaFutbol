@@ -1,6 +1,22 @@
 const pool = require('../db/client');
 
 const rankingRepository = {
+  async getSessionPosition(sessionId, mode) {
+    const orderBy = mode === 'timed'
+      ? 'correct_answers DESC'
+      : 'correct_answers DESC, total_time_ms ASC';
+    const result = await pool.query(
+      `WITH ranked_sessions AS (
+         SELECT id, RANK() OVER (ORDER BY ${orderBy}) AS position
+         FROM game_sessions
+         WHERE mode = $2 AND completed = true
+       )
+       SELECT position FROM ranked_sessions WHERE id = $1`,
+      [sessionId, mode]
+    );
+    return result.rows[0] ? Number(result.rows[0].position) : null;
+  },
+
   async getLeaderboard(mode, limit = 25) {
     const isTimed = mode === 'timed';
 

@@ -123,7 +123,8 @@
       }
 
       list.innerHTML = rows.map((row, i) => {
-        const pos = MEDALS[i] || `#${i + 1}`;
+        const position = Number(row.position) || i + 1;
+        const pos = MEDALS[position - 1] || `#${position}`;
         const timeStr = row.total_time_ms
           ? (() => {
               const s = Math.floor(row.total_time_ms / 1000);

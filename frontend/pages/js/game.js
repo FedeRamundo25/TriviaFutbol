@@ -141,9 +141,10 @@ async function submitAnswer(selectedOpt, q) {
   );
 
   if (res.error) {
-    // Si falla silenciosamente, avanzar igual
-    currentIndex++;
-    setTimeout(showQuestion, 300);
+    answered = false;
+    questionStartTime = Date.now();
+    feedback.textContent = 'No se pudo guardar la respuesta. Revisá tu conexión y elegí una opción para reintentar.';
+    feedback.className = 'feedback wrong';
     return;
   }
 
@@ -154,7 +155,7 @@ async function submitAnswer(selectedOpt, q) {
     const opt = q.options.find(o => o.name === name);
     if (!opt) return;
     if (opt.id === selectedOpt.id && !res.isCorrect) btn.classList.add('wrong');
-    if (opt.correct) btn.classList.add(opt.id === selectedOpt.id ? 'correct' : 'reveal');
+    if (opt.id === res.correctAnswerId) btn.classList.add(opt.id === selectedOpt.id ? 'correct' : 'reveal');
   });
 
   if (res.isCorrect) {
