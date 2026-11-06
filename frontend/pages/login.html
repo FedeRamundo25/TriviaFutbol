@@ -43,8 +43,9 @@
         <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
       </div>
       <div class="error-msg" id="registerError"></div>
+      <div class="success-msg" id="registerPending" role="status" aria-live="polite"></div>
       <br>
-      <button class="btn btn-azul" onclick="register()">🎮 Crear cuenta</button>
+      <button class="btn btn-azul" id="registerButton" onclick="register()">🎮 Crear cuenta</button>
     </div>
 
     <div class="success-msg" id="registerSuccess" role="status"></div>
@@ -109,7 +110,10 @@
       const username = document.getElementById('regUsername').value.trim();
       const password = document.getElementById('regPassword').value;
       const errorEl = document.getElementById('registerError');
+      const pendingEl = document.getElementById('registerPending');
+      const registerButton = document.getElementById('registerButton');
       errorEl.classList.remove('visible');
+      pendingEl.classList.remove('visible');
       document.getElementById('registerSuccess').classList.remove('visible');
 
       if (!username || !password) {
@@ -118,21 +122,33 @@
         return;
       }
 
-      const result = await api.register(username, password);
-      if (result.error) {
-        if (result.accountCreated) {
-          document.getElementById('regPassword').value = '';
-          document.getElementById('loginUsername').value = username;
-          document.getElementById('registerSuccess').textContent =
-            'La cuenta se creó, pero no pudimos iniciar sesión automáticamente. Ingresá con tu contraseña.';
-          document.getElementById('registerSuccess').classList.add('visible');
-          switchTab('login');
-          return;
+      registerButton.disabled = true;
+      registerButton.textContent = 'Creando cuenta…';
+      pendingEl.textContent = 'Estamos creando tu cuenta. Esto puede tardar unos segundos…';
+      pendingEl.classList.add('visible');
+
+      try {
+        const result = await api.register(username, password);
+        if (result.error) {
+          pendingEl.classList.remove('visible');
+          if (result.accountCreated) {
+            document.getElementById('regPassword').value = '';
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('registerSuccess').textContent =
+              'La cuenta se creó, pero no pudimos iniciar sesión automáticamente. Ingresá con tu contraseña.';
+            document.getElementById('registerSuccess').classList.add('visible');
+            switchTab('login');
+            return;
+          }
+          errorEl.textContent = result.error;
+          errorEl.classList.add('visible');
+        } else {
+          window.location.href = 'index.html?registered=1';
         }
-        errorEl.textContent = result.error;
-        errorEl.classList.add('visible');
-      } else {
-        window.location.href = 'index.html?registered=1';
+      } finally {
+        registerButton.disabled = false;
+        registerButton.textContent = '🎮 Crear cuenta';
+        pendingEl.classList.remove('visible');
       }
     }
 
