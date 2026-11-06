@@ -77,6 +77,7 @@
     async function init() {
       if (new URLSearchParams(window.location.search).get('registered') === '1') {
         document.getElementById('registrationSuccess').style.display = 'block';
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
 
       const user = await api.getMe();
@@ -98,7 +99,7 @@
 
     async function logout() {
       await api.logout();
-      window.location.reload();
+      window.location.href = 'index.html';
     }
 
     init();

@@ -112,6 +112,9 @@
       const errorEl = document.getElementById('registerError');
       const pendingEl = document.getElementById('registerPending');
       const registerButton = document.getElementById('registerButton');
+      const usernameInput = document.getElementById('regUsername');
+      const passwordInput = document.getElementById('regPassword');
+      if (registerButton.disabled) return;
       errorEl.classList.remove('visible');
       pendingEl.classList.remove('visible');
       document.getElementById('registerSuccess').classList.remove('visible');
@@ -123,6 +126,8 @@
       }
 
       registerButton.disabled = true;
+      usernameInput.disabled = true;
+      passwordInput.disabled = true;
       registerButton.textContent = 'Creando cuenta…';
       pendingEl.textContent = 'Estamos creando tu cuenta. Esto puede tardar unos segundos…';
       pendingEl.classList.add('visible');
@@ -147,6 +152,8 @@
         }
       } finally {
         registerButton.disabled = false;
+        usernameInput.disabled = false;
+        passwordInput.disabled = false;
         registerButton.textContent = '🎮 Crear cuenta';
         pendingEl.classList.remove('visible');
       }
